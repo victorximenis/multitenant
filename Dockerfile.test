@@ -1,0 +1,16 @@
+FROM golang:1.21-alpine
+
+# Instalar dependências necessárias
+RUN apk add --no-cache git gcc musl-dev
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos do projeto
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Comando padrão para executar testes com race detection
+CMD ["go", "test", "./...", "-race", "-v"] 
