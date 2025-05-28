@@ -11,6 +11,7 @@ node_modules/
 
 # Environment variables
 .env
+testconfig.env
 
 # Editor directories and files
 .idea
@@ -23,7 +24,75 @@ node_modules/
 
 # OS specific
 .DS_Store
+Thumbs.db
 
 # Task files
 tasks.json
-tasks/ 
+tasks/
+
+# Go specific
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+coverage.html
+
+# Dependency directories (Go modules)
+vendor/
+
+# Go workspace file
+go.work
+
+# Build artifacts
+dist/
+build/
+bin/
+
+# Local development files
+*.local
+.local/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# IDE files
+.vscode/settings.json
+.idea/workspace.xml
+.idea/tasks.xml
+
+# Docker volumes
+.docker/
+
+# Test databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Examples build output
+examples/example
+examples/*.exe
+
+# Coverage reports
+coverage.out
+coverage.html
+coverage.xml
+
+# Benchmark results
+*.bench
+
+# Security scan results
+gosec-report.json
+
+# Documentation build
+docs/build/
+site/ 

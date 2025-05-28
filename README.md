@@ -1,17 +1,20 @@
 # Multitenant Go Library
 
-Uma biblioteca Go robusta e flexível para implementar arquiteturas multitenancy em aplicações web, com suporte a múltiplos bancos de dados, cache Redis e middlewares para frameworks populares.
+[![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/victorximenis/multitenant)](https://goreportcard.com/report/github.com/victorximenis/multitenant)
+
+Uma biblioteca Go robusta e flexível para implementar arquiteturas multitenancy com suporte a múltiplos bancos de dados, cache Redis e middlewares HTTP.
 
 ## 🚀 Características
 
-- **Suporte a Múltiplos Bancos de Dados**: PostgreSQL e MongoDB
-- **Cache Distribuído**: Integração com Redis para cache de tenants
-- **Middlewares HTTP**: Suporte nativo para Gin, Fiber e Chi
-- **Gerenciamento de Conexões**: Pool de conexões otimizado por tenant
-- **Context-Aware**: Propagação automática de informações do tenant via context
-- **Observabilidade**: Integração com OpenTelemetry para tracing
-- **Configuração Flexível**: Configuração via variáveis de ambiente
-- **Testes Abrangentes**: Cobertura completa com testes unitários e de integração
+- **Multi-database**: Suporte para PostgreSQL e MongoDB
+- **Cache Redis**: Cache automático com TTL configurável
+- **HTTP Middlewares**: Integração com Gin, Fiber e Chi
+- **CLI/Worker Support**: Resolução de tenant para aplicações não-HTTP
+- **Thread-Safe**: Implementação segura para concorrência
+- **Clean Architecture**: Separação clara de responsabilidades
+- **Extensível**: Interfaces bem definidas para customização
 
 ## 📦 Instalação
 
@@ -19,62 +22,9 @@ Uma biblioteca Go robusta e flexível para implementar arquiteturas multitenancy
 go get github.com/victorximenis/multitenant
 ```
 
-## 🏗️ Arquitetura
+## 🏃 Quick Start
 
-A biblioteca segue os princípios de Clean Architecture com as seguintes camadas:
-
-- **Core**: Entidades de domínio e interfaces
-- **Service**: Lógica de negócio
-- **Infrastructure**: Implementações de repositórios e cache
-- **Interfaces**: Middlewares HTTP e CLI
-- **TenantContext**: Utilitários para gerenciamento de contexto
-
-## ⚙️ Configuração
-
-### Variáveis de Ambiente
-
-Configure as seguintes variáveis de ambiente:
-
-```bash
-# Configuração do Banco de Dados
-export MULTITENANT_DATABASE_TYPE=postgres  # ou mongodb
-export MULTITENANT_DATABASE_DSN="postgres://user:password@localhost:5432/db?sslmode=disable"
-
-# Configuração do Redis
-export MULTITENANT_REDIS_URL="redis://localhost:6379"
-export MULTITENANT_CACHE_TTL="5m"
-
-# Configuração HTTP
-export MULTITENANT_HEADER_NAME="X-Tenant-Id"
-
-# Configuração de Pool de Conexões
-export MULTITENANT_POOL_SIZE="10"
-export MULTITENANT_MAX_RETRIES="3"
-export MULTITENANT_RETRY_DELAY="1s"
-
-# Configuração de Logging
-export MULTITENANT_LOG_LEVEL="info"  # debug, info, warn, error
-```
-
-### Arquivo .env
-
-Crie um arquivo `.env` na raiz do seu projeto:
-
-```env
-MULTITENANT_DATABASE_TYPE=postgres
-MULTITENANT_DATABASE_DSN=postgres://dev_user:dev_password@localhost:5432/multitenant_db?sslmode=disable
-MULTITENANT_REDIS_URL=redis://localhost:6379
-MULTITENANT_HEADER_NAME=X-Tenant-Id
-MULTITENANT_CACHE_TTL=5m
-MULTITENANT_POOL_SIZE=10
-MULTITENANT_MAX_RETRIES=3
-MULTITENANT_RETRY_DELAY=1s
-MULTITENANT_LOG_LEVEL=info
-```
-
-## 🚀 Uso Básico
-
-### 1. Inicialização do Cliente
+### 1. Configuração Básica
 
 ```go
 package main
@@ -92,13 +42,13 @@ func main() {
     // Carregar configuração das variáveis de ambiente
     config, err := multitenant.LoadConfigFromEnv()
     if err != nil {
-        log.Fatalf("Erro ao carregar configuração: %v", err)
+        log.Fatal(err)
     }
     
     // Criar cliente multitenant
     client, err := multitenant.NewMultitenantClient(ctx, config)
     if err != nil {
-        log.Fatalf("Erro ao criar cliente multitenant: %v", err)
+        log.Fatal(err)
     }
     defer client.Close(ctx)
     
@@ -106,7 +56,21 @@ func main() {
 }
 ```
 
-### 2. Integração com Gin
+### 2. Configuração de Ambiente
+
+```bash
+export MULTITENANT_DATABASE_TYPE=postgres
+export MULTITENANT_DATABASE_DSN="postgres://user:pass@localhost:5432/db?sslmode=disable"
+export MULTITENANT_REDIS_URL="redis://localhost:6379"
+export MULTITENANT_HEADER_NAME="X-Tenant-Id"
+export MULTITENANT_CACHE_TTL="5m"
+export MULTITENANT_POOL_SIZE="10"
+export MULTITENANT_LOG_LEVEL="info"
+```
+
+## 🌐 Uso com HTTP Frameworks
+
+### Gin
 
 ```go
 package main
@@ -122,39 +86,30 @@ import (
 
 func main() {
     ctx := context.Background()
-    
-    // Configurar cliente
     config, _ := multitenant.LoadConfigFromEnv()
     client, _ := multitenant.NewMultitenantClient(ctx, config)
     defer client.Close(ctx)
     
-    // Configurar Gin
     router := gin.Default()
     
     // Adicionar middleware de tenant
     router.Use(client.GinMiddleware())
     
-    // Rota que usa informações do tenant
-    router.GET("/api/tenant-info", func(c *gin.Context) {
+    router.GET("/api/tenant", func(c *gin.Context) {
         tenant, ok := tenantcontext.GetTenant(c.Request.Context())
         if !ok {
-            c.JSON(http.StatusInternalServerError, gin.H{"error": "tenant não encontrado"})
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "tenant not found"})
             return
         }
         
-        c.JSON(http.StatusOK, gin.H{
-            "tenant_id":   tenant.ID,
-            "tenant_name": tenant.Name,
-            "is_active":   tenant.IsActive,
-            "metadata":    tenant.Metadata,
-        })
+        c.JSON(http.StatusOK, gin.H{"tenant": tenant})
     })
     
     router.Run(":8080")
 }
 ```
 
-### 3. Integração com Fiber
+### Fiber
 
 ```go
 package main
@@ -166,34 +121,30 @@ import (
 )
 
 func main() {
-    // Configurar cliente
+    ctx := context.Background()
     config, _ := multitenant.LoadConfigFromEnv()
-    client, _ := multitenant.NewMultitenantClient(context.Background(), config)
+    client, _ := multitenant.NewMultitenantClient(ctx, config)
+    defer client.Close(ctx)
     
-    // Configurar Fiber
     app := fiber.New()
     
     // Adicionar middleware de tenant
     app.Use(client.FiberMiddleware())
     
-    app.Get("/api/tenant-info", func(c *fiber.Ctx) error {
+    app.Get("/api/tenant", func(c *fiber.Ctx) error {
         tenant, ok := tenantcontext.GetTenant(c.Context())
         if !ok {
-            return c.Status(500).JSON(fiber.Map{"error": "tenant não encontrado"})
+            return c.Status(500).JSON(fiber.Map{"error": "tenant not found"})
         }
         
-        return c.JSON(fiber.Map{
-            "tenant_id":   tenant.ID,
-            "tenant_name": tenant.Name,
-            "is_active":   tenant.IsActive,
-        })
+        return c.JSON(fiber.Map{"tenant": tenant})
     })
     
     app.Listen(":8080")
 }
 ```
 
-### 4. Integração com Chi
+### Chi
 
 ```go
 package main
@@ -207,310 +158,278 @@ import (
 )
 
 func main() {
-    // Configurar cliente
+    ctx := context.Background()
     config, _ := multitenant.LoadConfigFromEnv()
-    client, _ := multitenant.NewMultitenantClient(context.Background(), config)
+    client, _ := multitenant.NewMultitenantClient(ctx, config)
+    defer client.Close(ctx)
     
-    // Configurar Chi
     r := chi.NewRouter()
     
     // Adicionar middleware de tenant
     r.Use(client.ChiMiddleware())
     
-    r.Get("/api/tenant-info", func(w http.ResponseWriter, r *http.Request) {
+    r.Get("/api/tenant", func(w http.ResponseWriter, r *http.Request) {
         tenant, ok := tenantcontext.GetTenant(r.Context())
         if !ok {
-            http.Error(w, "tenant não encontrado", http.StatusInternalServerError)
+            http.Error(w, "tenant not found", http.StatusInternalServerError)
             return
         }
         
-        // Responder com informações do tenant...
+        // Retornar tenant como JSON...
     })
     
     http.ListenAndServe(":8080", r)
 }
 ```
 
-## 🏢 Gerenciamento de Tenants
-
-### Estrutura do Tenant
-
-```go
-type Tenant struct {
-    ID          string                 `json:"id"`
-    Name        string                 `json:"name"`
-    IsActive    bool                   `json:"is_active"`
-    Metadata    map[string]interface{} `json:"metadata"`
-    Datasources []Datasource           `json:"datasources"`
-    CreatedAt   time.Time              `json:"created_at"`
-    UpdatedAt   time.Time              `json:"updated_at"`
-}
-
-type Datasource struct {
-    ID        string                 `json:"id"`
-    TenantID  string                 `json:"tenant_id"`
-    DSN       string                 `json:"dsn"`
-    Role      string                 `json:"role"` // read, write, rw
-    PoolSize  int                    `json:"pool_size"`
-    Metadata  map[string]interface{} `json:"metadata"`
-    CreatedAt time.Time              `json:"created_at"`
-    UpdatedAt time.Time              `json:"updated_at"`
-}
-```
-
-### Operações com Tenants
-
-```go
-// Obter serviço de tenant
-tenantService := client.GetTenantService()
-
-// Criar novo tenant
-tenant := core.NewTenant("meu-tenant")
-tenant.Metadata["plan"] = "premium"
-err := tenantService.CreateTenant(ctx, tenant)
-
-// Buscar tenant por nome
-tenant, err := tenantService.GetTenant(ctx, "meu-tenant")
-
-// Listar todos os tenants
-tenants, err := tenantService.ListTenants(ctx)
-
-// Atualizar tenant
-tenant.IsActive = false
-err = tenantService.UpdateTenant(ctx, tenant)
-
-// Deletar tenant
-err = tenantService.DeleteTenant(ctx, tenant.ID)
-```
-
-## 🔌 Gerenciamento de Conexões
-
-### Pool de Conexões PostgreSQL
-
-```go
-// Obter gerenciador de conexões
-connManager := client.GetConnectionManager()
-
-// Obter pool PostgreSQL para leitura/escrita
-pool, err := connManager.GetPostgresPool(ctx, "rw")
-if err != nil {
-    log.Fatal(err)
-}
-
-// Usar o pool
-rows, err := pool.Query(ctx, "SELECT * FROM users WHERE tenant_id = $1", tenantID)
-```
-
-### Pool de Conexões MongoDB
-
-```go
-// Obter pool MongoDB
-mongoPool, err := connManager.GetMongoPool(ctx, "read")
-if err != nil {
-    log.Fatal(err)
-}
-
-// Usar o pool
-collection := mongoPool.Database("mydb").Collection("users")
-cursor, err := collection.Find(ctx, bson.M{"tenant_id": tenantID})
-```
-
-## 🧪 Context e Utilitários
-
-### Trabalhando com Context
-
-```go
-import "github.com/victorximenis/multitenant/tenantcontext"
-
-// Adicionar tenant ao context
-ctx = tenantcontext.WithTenant(ctx, tenant)
-
-// Obter tenant do context
-tenant, ok := tenantcontext.GetTenant(ctx)
-
-// Obter tenant (com panic se não encontrado)
-tenant := tenantcontext.MustGetTenant(ctx)
-
-// Obter apenas o nome do tenant
-tenantName := tenantcontext.GetCurrentTenantName(ctx)
-
-// Obter apenas o ID do tenant
-tenantID := tenantcontext.GetCurrentTenantID(ctx)
-
-// Verificar se há tenant no context
-hasTenant := tenantcontext.HasTenant(ctx)
-```
-
-### Utilitários para Testes
-
-```go
-import "github.com/victorximenis/multitenant/tenantcontext"
-
-// Criar context de teste com tenant
-ctx := tenantcontext.CreateTestContext("test-tenant")
-
-// Criar tenant de teste
-tenant := tenantcontext.CreateTestTenant("test-tenant", map[string]interface{}{
-    "plan": "test",
-})
-```
-
-## 📊 Observabilidade
-
-### Tracing com OpenTelemetry
-
-A biblioteca automaticamente propaga informações do tenant para spans de tracing:
-
-```go
-import "github.com/victorximenis/multitenant/tenantcontext"
-
-// O middleware automaticamente chama:
-tenantcontext.PropagateToSpan(ctx)
-
-// Isso adiciona os seguintes atributos ao span:
-// - tenant.id
-// - tenant.name
-// - tenant.is_active
-```
-
-### Logging
-
-Configure o nível de log via variável de ambiente:
-
-```bash
-export MULTITENANT_LOG_LEVEL=debug  # debug, info, warn, error
-```
-
-## 🧪 Testes
-
-### Executar Testes Unitários
-
-```bash
-go test ./...
-```
-
-### Executar Testes de Integração
-
-Os testes de integração requerem PostgreSQL e Redis rodando:
-
-```bash
-# Iniciar dependências com Docker
-docker run -d --name postgres-test -p 5432:5432 \
-  -e POSTGRES_USER=dev_user \
-  -e POSTGRES_PASSWORD=dev_password \
-  -e POSTGRES_DB=multitenant_db \
-  postgres:15
-
-docker run -d --name redis-test -p 6379:6379 redis:7
-
-# Executar testes de integração
-go test -v ./... -tags=integration
-```
-
-### Cobertura de Testes
-
-```bash
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out
-```
-
-## 📝 Exemplos Completos
-
-Veja o diretório [`examples/`](./examples/) para exemplos completos de uso com diferentes frameworks.
-
-### Executar Exemplo
-
-```bash
-cd examples
-export MULTITENANT_DATABASE_DSN="postgres://dev_user:dev_password@localhost:5432/multitenant_db?sslmode=disable"
-export MULTITENANT_REDIS_URL="redis://localhost:6379"
-go run main.go
-```
-
-### Testar Exemplo
-
-```bash
-# Health check
-curl http://localhost:8080/api/health
-
-# Com header de tenant
-curl -H "X-Tenant-Id: test-tenant" http://localhost:8080/api/tenant
-
-# Sem header (deve retornar erro)
-curl http://localhost:8080/api/tenant
-```
-
 ## 🔧 Configuração Avançada
 
-### Configuração Personalizada
+### Configuração Programática
 
 ```go
 config := &multitenant.Config{
     DatabaseType: multitenant.PostgreSQL,
-    DatabaseDSN:  "postgres://...",
+    DatabaseDSN:  "postgres://user:pass@localhost:5432/db",
     RedisURL:     "redis://localhost:6379",
-    HeaderName:   "X-Custom-Tenant",
-    CacheTTL:     10 * time.Minute,
-    PoolSize:     20,
-    MaxRetries:   5,
-    RetryDelay:   2 * time.Second,
-    LogLevel:     "debug",
+    CacheTTL:     5 * time.Minute,
+    HeaderName:   "X-Tenant-Id",
+    PoolSize:     10,
+    MaxRetries:   3,
+    RetryDelay:   1 * time.Second,
+    LogLevel:     "info",
 }
 
 client, err := multitenant.NewMultitenantClient(ctx, config)
 ```
 
-### Middleware Personalizado
+### Configuração com MongoDB
 
 ```go
-// Gin com tratamento de erro personalizado
-middleware := httpMiddleware.TenantMiddleware(httpMiddleware.GinMiddlewareConfig{
-    TenantService: tenantService,
-    HeaderName:    "X-Tenant-Id",
-    ErrorHandler: func(c *gin.Context, err error) {
-        // Tratamento personalizado de erro
-        c.JSON(http.StatusBadRequest, gin.H{
-            "error": "Tenant inválido",
-            "code":  "INVALID_TENANT",
-        })
-        c.Abort()
-    },
+config := &multitenant.Config{
+    DatabaseType: multitenant.MongoDB,
+    DatabaseDSN:  "mongodb://localhost:27017/multitenant",
+    RedisURL:     "redis://localhost:6379",
+    // ... outras configurações
+}
+```
+
+## 🖥️ Uso em CLI/Workers
+
+### Resolver Tenant por Variável de Ambiente
+
+```go
+resolver := client.GetTenantResolver()
+
+// Resolver tenant da variável TENANT_NAME
+ctx, err := resolver.ResolveTenantFromEnv(context.Background())
+if err != nil {
+    log.Fatal(err)
+}
+
+// Usar contexto com tenant...
+```
+
+### Processar Todos os Tenants
+
+```go
+err := resolver.ForEachTenant(ctx, func(tenantCtx context.Context) error {
+    tenant, _ := tenantcontext.GetTenant(tenantCtx)
+    log.Printf("Processando tenant: %s", tenant.Name)
+    
+    // Sua lógica de processamento aqui...
+    return nil
 })
 ```
 
+### Worker com Polling
+
+```go
+import "github.com/victorximenis/multitenant/interfaces/cli"
+
+worker := cli.NewWorker(cli.WorkerConfig{
+    TenantService: client.GetTenantService(),
+    ProcessAll:    true, // ou false para tenant específico
+    TenantName:    "specific-tenant", // se ProcessAll = false
+    EnvVarName:    "TENANT_NAME",
+    PollInterval:  30 * time.Second,
+})
+
+err := worker.Start(ctx, func(tenantCtx context.Context) error {
+    tenant, _ := tenantcontext.GetTenant(tenantCtx)
+    log.Printf("Processando tenant: %s", tenant.Name)
+    return nil
+})
+```
+
+## 🗄️ Gestão de Tenants
+
+### Criar Tenant
+
+```go
+tenant := core.NewTenant("meu-tenant")
+tenant.Metadata["plan"] = "premium"
+
+err := client.GetTenantService().CreateTenant(ctx, tenant)
+```
+
+### Buscar Tenant
+
+```go
+tenant, err := client.GetTenantService().GetTenant(ctx, "meu-tenant")
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+### Listar Tenants
+
+```go
+tenants, err := client.GetTenantService().ListTenants(ctx)
+```
+
+### Adicionar Datasource ao Tenant
+
+```go
+datasource := core.NewDatasource(
+    tenant.ID,
+    "postgres://tenant1:pass@localhost:5432/tenant1_db",
+    "rw", // read-write
+    5,    // pool size
+)
+
+tenant.Datasources = append(tenant.Datasources, *datasource)
+err := client.GetTenantService().UpdateTenant(ctx, tenant)
+```
+
+## 🔌 Conexões de Banco por Tenant
+
+### PostgreSQL
+
+```go
+// Obter pool para tenant atual no contexto
+pool, err := client.GetConnectionManager().GetPostgresPool(ctx, "read")
+
+// Obter pool para tenant específico
+pool, err := client.GetConnectionManager().GetPostgresPoolForTenant(ctx, "tenant-name", "write")
+
+// Usar pool
+rows, err := pool.Query(ctx, "SELECT * FROM users")
+```
+
+### MongoDB
+
+```go
+// Obter client para tenant atual
+mongoClient, err := client.GetConnectionManager().GetMongoClient(ctx, "read")
+
+// Obter client para tenant específico
+mongoClient, err := client.GetConnectionManager().GetMongoClientForTenant(ctx, "tenant-name", "write")
+
+// Usar client
+collection := mongoClient.Database("mydb").Collection("users")
+```
+
+## 🧪 Testes
+
+### Contexto de Teste
+
+```go
+import "github.com/victorximenis/multitenant/tenantcontext"
+
+func TestMyFunction(t *testing.T) {
+    // Criar tenant de teste
+    tenant := tenantcontext.NewTestTenant("test-tenant")
+    
+    // Criar contexto com tenant
+    ctx := tenantcontext.NewTestContextWithTenant(tenant)
+    
+    // Usar em testes...
+    result := MyFunction(ctx)
+    
+    // Verificar se tenant está no contexto
+    assert.True(t, tenantcontext.AssertTenantInContext(ctx, "test-tenant"))
+}
+```
+
+## 📋 Variáveis de Ambiente
+
+| Variável | Descrição | Padrão | Obrigatória |
+|----------|-----------|---------|-------------|
+| `MULTITENANT_DATABASE_TYPE` | Tipo do banco (`postgres` ou `mongodb`) | `postgres` | Não |
+| `MULTITENANT_DATABASE_DSN` | String de conexão do banco | - | Sim |
+| `MULTITENANT_REDIS_URL` | URL do Redis | - | Sim |
+| `MULTITENANT_CACHE_TTL` | TTL do cache (ex: `5m`, `1h`) | `5m` | Não |
+| `MULTITENANT_HEADER_NAME` | Nome do header HTTP | `X-Tenant-Id` | Não |
+| `MULTITENANT_POOL_SIZE` | Tamanho do pool de conexões | `10` | Não |
+| `MULTITENANT_MAX_RETRIES` | Máximo de tentativas | `3` | Não |
+| `MULTITENANT_RETRY_DELAY` | Delay entre tentativas | `1s` | Não |
+| `MULTITENANT_LOG_LEVEL` | Nível de log (`debug`, `info`, `warn`, `error`) | `info` | Não |
+
+## 🚨 Troubleshooting
+
+### Erro: "tenant not found"
+
+**Causa**: Header `X-Tenant-Id` não enviado ou tenant não existe no banco.
+
+**Solução**:
+1. Verificar se o header está sendo enviado
+2. Verificar se o tenant existe: `client.GetTenantService().GetTenant(ctx, "tenant-name")`
+3. Criar o tenant se necessário
+
+### Erro: "database DSN is required"
+
+**Causa**: Variável `MULTITENANT_DATABASE_DSN` não configurada.
+
+**Solução**: Configurar a variável com a string de conexão correta.
+
+### Erro: "Redis URL is required"
+
+**Causa**: Variável `MULTITENANT_REDIS_URL` não configurada.
+
+**Solução**: Configurar a variável com a URL do Redis.
+
+### Performance Issues
+
+**Sintomas**: Lentidão nas requisições.
+
+**Soluções**:
+1. Aumentar `MULTITENANT_POOL_SIZE`
+2. Ajustar `MULTITENANT_CACHE_TTL` para maior valor
+3. Verificar latência do Redis
+4. Monitorar conexões do banco
+
+### Memory Leaks
+
+**Sintomas**: Uso crescente de memória.
+
+**Soluções**:
+1. Chamar `client.Close(ctx)` ao finalizar
+2. Verificar se conexões estão sendo fechadas
+3. Monitorar pools de conexão
+
 ## 🤝 Contribuindo
 
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
-### Diretrizes de Desenvolvimento
-
-- Mantenha cobertura de testes acima de 80%
-- Siga as convenções de código Go
-- Adicione documentação para novas funcionalidades
-- Execute `go fmt` e `go vet` antes de commitar
+Contribuições são bem-vindas! Por favor, leia [CONTRIBUTING.md](CONTRIBUTING.md) para detalhes sobre nosso código de conduta e processo de submissão de pull requests.
 
 ## 📄 Licença
 
 Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
-## 🆘 Suporte
+## 🔗 Links Úteis
 
-- 🐛 Issues: [GitHub Issues](https://github.com/victorximenis/multitenant/issues)
-- 📖 Documentação: [Wiki](https://github.com/victorximenis/multitenant/wiki)
+- [Documentação da API](https://pkg.go.dev/github.com/victorximenis/multitenant)
+- [Exemplos](examples/)
+- [Issues](https://github.com/victorximenis/multitenant/issues)
+- [Releases](https://github.com/victorximenis/multitenant/releases)
 
-## 🗺️ Roadmap
+## 📊 Status do Projeto
 
-- [ ] Suporte a MySQL
-- [ ] Middleware para Echo framework
-- [ ] Métricas com Prometheus
-- [ ] CLI para gerenciamento de tenants
-- [ ] Migração automática de schemas
-- [ ] Suporte a sharding horizontal
-
----
-
-**Desenvolvido com ❤️ em Go** 
+- ✅ Core functionality
+- ✅ PostgreSQL support
+- ✅ MongoDB support
+- ✅ Redis cache
+- ✅ HTTP middlewares (Gin, Fiber, Chi)
+- ✅ CLI/Worker support
+- ✅ Comprehensive tests
+- 🔄 Observability features (em desenvolvimento)
+- 🔄 Metrics and monitoring (planejado) 

@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  GO_VERSION: '1.21'
+
+jobs:
+  test:
+    name: Test Before Release
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: dev_user
+          POSTGRES_PASSWORD: dev_password
+          POSTGRES_DB: multitenant_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Run tests
+      env:
+        MULTITENANT_DATABASE_TYPE: postgres
+        MULTITENANT_DATABASE_DSN: postgres://dev_user:dev_password@localhost:5432/multitenant_db?sslmode=disable
+        MULTITENANT_REDIS_URL: redis://localhost:6379
+      run: go test -v -race ./...
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Get tag name
+      id: tag
+      run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Extract changelog for this version
+        if [ -f CHANGELOG.md ]; then
+          # Get changelog between this tag and previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            echo "## Changes since $PREV_TAG" > release_notes.md
+            git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> release_notes.md
+          else
+            echo "## Initial Release" > release_notes.md
+            echo "First release of the Multitenant Go Library" >> release_notes.md
+          fi
+        else
+          echo "## Release ${{ steps.tag.outputs.tag }}" > release_notes.md
+          echo "Release notes not available" >> release_notes.md
+        fi
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        release_name: Release ${{ steps.tag.outputs.tag }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    needs: [test, release]
+    if: always()
+    
+    steps:
+    - name: Notify Success
+      if: needs.release.result == 'success'
+      run: |
+        echo "✅ Release ${{ github.ref_name }} created successfully!"
+        echo "📦 Package available at: https://pkg.go.dev/github.com/victorximenis/multitenant@${{ github.ref_name }}"
+    
+    - name: Notify Failure
+      if: needs.release.result == 'failure'
+      run: |
+        echo "❌ Release ${{ github.ref_name }} failed!"
+        exit 1 

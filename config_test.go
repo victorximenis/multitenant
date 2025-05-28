@@ -106,7 +106,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 
 		_, err := LoadConfigFromEnv()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid cache TTL: invalid")
+		assert.Contains(t, err.Error(), "invalid cache TTL format: invalid")
 	})
 
 	t.Run("Invalid pool size", func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestLoadConfigFromEnv(t *testing.T) {
 
 		_, err := LoadConfigFromEnv()
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid retry delay: invalid")
+		assert.Contains(t, err.Error(), "invalid retry delay format: invalid")
 	})
 }
 
@@ -261,5 +261,53 @@ func TestConfigValidation(t *testing.T) {
 		err := config.Validate()
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "retry delay cannot be negative")
+	})
+
+	t.Run("Invalid PostgreSQL DSN format", func(t *testing.T) {
+		config := &Config{
+			DatabaseType: PostgreSQL,
+			DatabaseDSN:  "invalid-dsn",
+			RedisURL:     "redis://localhost:6379",
+			CacheTTL:     5 * time.Minute,
+			HeaderName:   "X-Tenant-Id",
+			PoolSize:     10,
+			LogLevel:     "info",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "PostgreSQL DSN must start with")
+	})
+
+	t.Run("Invalid MongoDB DSN format", func(t *testing.T) {
+		config := &Config{
+			DatabaseType: MongoDB,
+			DatabaseDSN:  "invalid-dsn",
+			RedisURL:     "redis://localhost:6379",
+			CacheTTL:     5 * time.Minute,
+			HeaderName:   "X-Tenant-Id",
+			PoolSize:     10,
+			LogLevel:     "info",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "MongoDB DSN must start with")
+	})
+
+	t.Run("Invalid Redis URL format", func(t *testing.T) {
+		config := &Config{
+			DatabaseType: PostgreSQL,
+			DatabaseDSN:  "postgres://user:pass@localhost:5432/db",
+			RedisURL:     "invalid-url",
+			CacheTTL:     5 * time.Minute,
+			HeaderName:   "X-Tenant-Id",
+			PoolSize:     10,
+			LogLevel:     "info",
+		}
+
+		err := config.Validate()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "Redis URL must start with")
 	})
 }
