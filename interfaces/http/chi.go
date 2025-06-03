@@ -2,8 +2,9 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/victorximenis/multitenant/core"
 	"github.com/victorximenis/multitenant/tenantcontext"
@@ -11,9 +12,10 @@ import (
 
 // ChiMiddlewareConfig holds configuration for the Chi tenant middleware
 type ChiMiddlewareConfig struct {
-	TenantService core.TenantService
-	HeaderName    string
-	ErrorHandler  func(http.ResponseWriter, *http.Request, error)
+	TenantService    core.TenantService
+	HeaderName       string
+	ErrorHandler     func(http.ResponseWriter, *http.Request, error)
+	IgnoredEndpoints []string
 }
 
 // DefaultChiErrorHandler provides default error handling for Chi middleware
@@ -50,12 +52,23 @@ func ChiTenantMiddleware(config ChiMiddlewareConfig) func(http.Handler) http.Han
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Check if the current path should be ignored
+			path := r.URL.Path
+			for _, ignoredPath := range config.IgnoredEndpoints {
+				if strings.HasPrefix(path, ignoredPath) {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			// Get tenant from header
 			tenantName := r.Header.Get(config.HeaderName)
 			if tenantName == "" {
-				config.ErrorHandler(w, r, fmt.Errorf("tenant header %s not provided", config.HeaderName))
+				config.ErrorHandler(w, r, errors.New("tenant header not found"))
 				return
 			}
 
+			// Get tenant from service
 			tenant, err := config.TenantService.GetTenant(r.Context(), tenantName)
 			if err != nil {
 				config.ErrorHandler(w, r, err)
