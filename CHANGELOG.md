@@ -72,6 +72,7 @@ multitenant/
 - `MULTITENANT_MAX_RETRIES`: Máximo de tentativas
 - `MULTITENANT_RETRY_DELAY`: Delay entre tentativas
 - `MULTITENANT_LOG_LEVEL`: Nível de log
+- `MULTITENANT_IGNORED_ENDPOINTS`: Lista de endpoints a serem ignorados pelo middleware, separados por vírgula (ex: /health,/metrics)
 
 ### Dependências Principais
 - `github.com/gin-gonic/gin`: Framework HTTP

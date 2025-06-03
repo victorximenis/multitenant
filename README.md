@@ -66,6 +66,7 @@ export MULTITENANT_HEADER_NAME="X-Tenant-Id"
 export MULTITENANT_CACHE_TTL="5m"
 export MULTITENANT_POOL_SIZE="10"
 export MULTITENANT_LOG_LEVEL="info"
+export MULTITENANT_IGNORED_ENDPOINTS="/health,/metrics"  # Lista de endpoints a serem ignorados pelo middleware
 ```
 
 ## 🌐 Uso com HTTP Frameworks
@@ -188,15 +189,16 @@ func main() {
 
 ```go
 config := &multitenant.Config{
-    DatabaseType: multitenant.PostgreSQL,
-    DatabaseDSN:  "postgres://user:pass@localhost:5432/db",
-    RedisURL:     "redis://localhost:6379",
-    CacheTTL:     5 * time.Minute,
-    HeaderName:   "X-Tenant-Id",
-    PoolSize:     10,
-    MaxRetries:   3,
-    RetryDelay:   1 * time.Second,
-    LogLevel:     "info",
+    DatabaseType:     multitenant.PostgreSQL,
+    DatabaseDSN:      "postgres://user:pass@localhost:5432/db",
+    RedisURL:         "redis://localhost:6379",
+    CacheTTL:         5 * time.Minute,
+    HeaderName:       "X-Tenant-Id",
+    PoolSize:         10,
+    MaxRetries:       3,
+    RetryDelay:        1 * time.Second,
+    LogLevel:         "info",
+    IgnoredEndpoints: []string{"/health", "/metrics"},
 }
 
 client, err := multitenant.NewMultitenantClient(ctx, config)
@@ -364,6 +366,7 @@ func TestMyFunction(t *testing.T) {
 | `MULTITENANT_MAX_RETRIES` | Máximo de tentativas | `3` | Não |
 | `MULTITENANT_RETRY_DELAY` | Delay entre tentativas | `1s` | Não |
 | `MULTITENANT_LOG_LEVEL` | Nível de log (`debug`, `info`, `warn`, `error`) | `info` | Não |
+| `MULTITENANT_IGNORED_ENDPOINTS` | Lista de endpoints a serem ignorados pelo middleware | - | Não |
 
 ## 🚨 Troubleshooting
 

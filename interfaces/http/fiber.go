@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -11,9 +12,10 @@ import (
 
 // FiberMiddlewareConfig holds configuration for the Fiber tenant middleware
 type FiberMiddlewareConfig struct {
-	TenantService core.TenantService
-	HeaderName    string
-	ErrorHandler  func(*fiber.Ctx, error) error
+	TenantService    core.TenantService
+	HeaderName       string
+	ErrorHandler     func(*fiber.Ctx, error) error
+	IgnoredEndpoints []string
 }
 
 // DefaultFiberErrorHandler provides default error handling for Fiber middleware
@@ -44,6 +46,14 @@ func FiberTenantMiddleware(config FiberMiddlewareConfig) fiber.Handler {
 	}
 
 	return func(c *fiber.Ctx) error {
+		// Check if the current path should be ignored
+		path := c.Path()
+		for _, ignoredPath := range config.IgnoredEndpoints {
+			if strings.HasPrefix(path, ignoredPath) {
+				return c.Next()
+			}
+		}
+
 		tenantName := c.Get(config.HeaderName)
 		if tenantName == "" {
 			return config.ErrorHandler(c, fmt.Errorf("tenant header %s not provided", config.HeaderName))

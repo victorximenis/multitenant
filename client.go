@@ -101,24 +101,27 @@ func (c *MultitenantClient) GetTenantResolver() *cli.TenantResolver {
 // GinMiddleware returns a Gin middleware for tenant resolution
 func (c *MultitenantClient) GinMiddleware() gin.HandlerFunc {
 	return httpMiddleware.TenantMiddleware(httpMiddleware.GinMiddlewareConfig{
-		TenantService: c.tenantService,
-		HeaderName:    c.config.HeaderName,
+		TenantService:    c.tenantService,
+		HeaderName:       c.config.HeaderName,
+		IgnoredEndpoints: c.config.IgnoredEndpoints,
 	})
 }
 
 // FiberMiddleware returns a Fiber middleware for tenant resolution
 func (c *MultitenantClient) FiberMiddleware() fiber.Handler {
 	return httpMiddleware.FiberTenantMiddleware(httpMiddleware.FiberMiddlewareConfig{
-		TenantService: c.tenantService,
-		HeaderName:    c.config.HeaderName,
+		TenantService:    c.tenantService,
+		HeaderName:       c.config.HeaderName,
+		IgnoredEndpoints: c.config.IgnoredEndpoints,
 	})
 }
 
 // ChiMiddleware returns a Chi middleware for tenant resolution
 func (c *MultitenantClient) ChiMiddleware() func(http.Handler) http.Handler {
 	return httpMiddleware.ChiTenantMiddleware(httpMiddleware.ChiMiddlewareConfig{
-		TenantService: c.tenantService,
-		HeaderName:    c.config.HeaderName,
+		TenantService:    c.tenantService,
+		HeaderName:       c.config.HeaderName,
+		IgnoredEndpoints: c.config.IgnoredEndpoints,
 	})
 }
 

@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -12,9 +13,10 @@ import (
 
 // GinMiddlewareConfig holds configuration for the Gin tenant middleware
 type GinMiddlewareConfig struct {
-	TenantService core.TenantService
-	HeaderName    string
-	ErrorHandler  func(*gin.Context, error)
+	TenantService    core.TenantService
+	HeaderName       string
+	ErrorHandler     func(*gin.Context, error)
+	IgnoredEndpoints []string
 }
 
 // DefaultGinErrorHandler provides default error handling for Gin middleware
@@ -46,6 +48,15 @@ func TenantMiddleware(config GinMiddlewareConfig) gin.HandlerFunc {
 	}
 
 	return func(c *gin.Context) {
+		// Check if the current path should be ignored
+		path := c.Request.URL.Path
+		for _, ignoredPath := range config.IgnoredEndpoints {
+			if strings.HasPrefix(path, ignoredPath) {
+				c.Next()
+				return
+			}
+		}
+
 		tenantName := c.GetHeader(config.HeaderName)
 		if tenantName == "" {
 			config.ErrorHandler(c, fmt.Errorf("tenant header %s not provided", config.HeaderName))

@@ -28,7 +28,8 @@ type Config struct {
 	CacheTTL time.Duration `json:"cache_ttl"`
 
 	// HTTP configuration
-	HeaderName string `json:"header_name"`
+	HeaderName       string   `json:"header_name"`
+	IgnoredEndpoints []string `json:"ignored_endpoints"`
 
 	// Connection pool configuration
 	PoolSize   int           `json:"pool_size"`
@@ -85,6 +86,14 @@ func LoadConfigFromEnv() (*Config, error) {
 	// HTTP configuration
 	if headerName := os.Getenv("MULTITENANT_HEADER_NAME"); headerName != "" {
 		config.HeaderName = headerName
+	}
+
+	if ignoredEndpoints := os.Getenv("MULTITENANT_IGNORED_ENDPOINTS"); ignoredEndpoints != "" {
+		config.IgnoredEndpoints = strings.Split(ignoredEndpoints, ",")
+		// Trim spaces from each endpoint
+		for i, endpoint := range config.IgnoredEndpoints {
+			config.IgnoredEndpoints[i] = strings.TrimSpace(endpoint)
+		}
 	}
 
 	// Connection pool configuration

@@ -103,6 +103,21 @@ func (b *ConfigBuilder) WithTestDefaults() *ConfigBuilder {
 	return b
 }
 
+// WithIgnoredEndpoints sets the endpoints to be ignored by the middleware
+func (b *ConfigBuilder) WithIgnoredEndpoints(endpoints []string) *ConfigBuilder {
+	b.config.IgnoredEndpoints = endpoints
+	return b
+}
+
+// WithIgnoredEndpoint adds a single endpoint to be ignored by the middleware
+func (b *ConfigBuilder) WithIgnoredEndpoint(endpoint string) *ConfigBuilder {
+	if b.config.IgnoredEndpoints == nil {
+		b.config.IgnoredEndpoints = make([]string, 0)
+	}
+	b.config.IgnoredEndpoints = append(b.config.IgnoredEndpoints, endpoint)
+	return b
+}
+
 // Build validates and returns the configuration
 func (b *ConfigBuilder) Build() (*Config, error) {
 	if err := b.config.Validate(); err != nil {
@@ -124,15 +139,16 @@ func (b *ConfigBuilder) MustBuild() *Config {
 func (b *ConfigBuilder) Clone() *ConfigBuilder {
 	return &ConfigBuilder{
 		config: &Config{
-			DatabaseType: b.config.DatabaseType,
-			DatabaseDSN:  b.config.DatabaseDSN,
-			RedisURL:     b.config.RedisURL,
-			CacheTTL:     b.config.CacheTTL,
-			HeaderName:   b.config.HeaderName,
-			PoolSize:     b.config.PoolSize,
-			MaxRetries:   b.config.MaxRetries,
-			RetryDelay:   b.config.RetryDelay,
-			LogLevel:     b.config.LogLevel,
+			DatabaseType:     b.config.DatabaseType,
+			DatabaseDSN:      b.config.DatabaseDSN,
+			RedisURL:         b.config.RedisURL,
+			CacheTTL:         b.config.CacheTTL,
+			HeaderName:       b.config.HeaderName,
+			PoolSize:         b.config.PoolSize,
+			MaxRetries:       b.config.MaxRetries,
+			RetryDelay:       b.config.RetryDelay,
+			LogLevel:         b.config.LogLevel,
+			IgnoredEndpoints: append([]string(nil), b.config.IgnoredEndpoints...),
 		},
 	}
 }
@@ -141,15 +157,16 @@ func (b *ConfigBuilder) Clone() *ConfigBuilder {
 func FromConfig(config *Config) *ConfigBuilder {
 	return &ConfigBuilder{
 		config: &Config{
-			DatabaseType: config.DatabaseType,
-			DatabaseDSN:  config.DatabaseDSN,
-			RedisURL:     config.RedisURL,
-			CacheTTL:     config.CacheTTL,
-			HeaderName:   config.HeaderName,
-			PoolSize:     config.PoolSize,
-			MaxRetries:   config.MaxRetries,
-			RetryDelay:   config.RetryDelay,
-			LogLevel:     config.LogLevel,
+			DatabaseType:     config.DatabaseType,
+			DatabaseDSN:      config.DatabaseDSN,
+			RedisURL:         config.RedisURL,
+			CacheTTL:         config.CacheTTL,
+			HeaderName:       config.HeaderName,
+			PoolSize:         config.PoolSize,
+			MaxRetries:       config.MaxRetries,
+			RetryDelay:       config.RetryDelay,
+			LogLevel:         config.LogLevel,
+			IgnoredEndpoints: append([]string(nil), config.IgnoredEndpoints...),
 		},
 	}
 }
